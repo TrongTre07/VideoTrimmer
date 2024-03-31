@@ -1,16 +1,35 @@
 import {StyleSheet, Text, View} from 'react-native';
 import React from 'react';
+import {formatTimePerTime} from './helper/convertTimeString';
 
-const VideoDurationTimeline = () => {
+type VideoDurationTimelineProps = {
+  currentTime: number;
+  duration: number;
+};
+
+const VideoDurationTimeline = ({
+  currentTime,
+  duration,
+}: VideoDurationTimelineProps) => {
   return (
     <View style={styles.container}>
       <View style={styles.timePerTime}>
-        <Text>00:12</Text>
-        <Text> / 00:12</Text>
+        <Text style={styles.leftDuration}>
+          {formatTimePerTime(currentTime)}
+        </Text>
+        <Text style={styles.rightDuration}>
+          {' '}
+          / {formatTimePerTime(duration)}
+        </Text>
       </View>
       <View style={[styles.timePerTime, {paddingBottom: 20}]}>
-        <Text>00:12</Text>
-        <Text> / 00:12</Text>
+        <Text style={styles.leftDuration}>
+          {formatTimePerTime(currentTime)}
+        </Text>
+        <Text style={styles.rightDuration}>
+          {' '}
+          / {formatTimePerTime(duration)}
+        </Text>
       </View>
     </View>
   );
@@ -29,5 +48,14 @@ const styles = StyleSheet.create({
   timePerTime: {
     flexDirection: 'row',
     paddingHorizontal: 20,
+  },
+  rightDuration: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  leftDuration: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

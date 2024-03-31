@@ -1,7 +1,7 @@
 import React from 'react';
 import {Path, Svg} from 'react-native-svg';
 
-const PreviousWhite = () => {
+export const PreviousWhite = () => {
   return (
     <Svg width="13" height="14" viewBox="0 0 13 14">
       <Path
@@ -11,5 +11,3 @@ const PreviousWhite = () => {
     </Svg>
   );
 };
-
-export default PreviousWhite;

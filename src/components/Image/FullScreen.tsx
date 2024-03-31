@@ -1,7 +1,7 @@
 import React from 'react';
 import {Path, Svg} from 'react-native-svg';
 
-const FullScreen = () => {
+export const FullScreen = () => {
   return (
     <Svg width="14" height="14" viewBox="0 0 14 14" fill="none">
       <Path
@@ -43,5 +43,3 @@ const FullScreen = () => {
     </Svg>
   );
 };
-
-export default FullScreen;

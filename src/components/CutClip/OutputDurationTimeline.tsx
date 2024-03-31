@@ -1,5 +1,6 @@
 import {StyleSheet, Text, View} from 'react-native';
 import React from 'react';
+import {convertTimeString} from './helper/convertTimeString';
 
 const OutputDurationTimeline = ({
   startTime,
@@ -10,9 +11,9 @@ const OutputDurationTimeline = ({
 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.timeDuration}>00:00:00</Text>
+      <Text style={styles.timeDuration}>{convertTimeString(startTime)}</Text>
       <Text>Output Duration</Text>
-      <Text style={styles.timeDuration}>00:00:00</Text>
+      <Text style={styles.timeDuration}>{convertTimeString(endTime)}</Text>
     </View>
   );
 };

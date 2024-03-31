@@ -1,7 +1,7 @@
 import React from 'react';
 import {Path, Svg} from 'react-native-svg';
 
-const PlayIcon = () => {
+export const PlayIcon = () => {
   return (
     <Svg width="12" height="13" viewBox="0 0 12 13" fill="none">
       <Path
@@ -11,5 +11,3 @@ const PlayIcon = () => {
     </Svg>
   );
 };
-
-export default PlayIcon;

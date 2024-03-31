@@ -1,39 +1,34 @@
 import React, {useState, useRef} from 'react';
-import {
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  Text,
-  Image,
-  Dimensions,
-  LayoutChangeEvent,
-} from 'react-native';
-import Video from 'react-native-video';
+import {View, TouchableOpacity, Text} from 'react-native';
+import Video, {OnLoadData, OnProgressData} from 'react-native-video';
 import Slider from '@react-native-community/slider';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
-import {encodingVideo} from './encodingVideo';
+import Animated, {runOnJS, useSharedValue} from 'react-native-reanimated';
+import {encodingVideo} from './helper/encodingVideo';
 import {launchImageLibrary} from 'react-native-image-picker';
-import {formatDuration} from './formatDuration';
-import PlayIcon from '../Image/PlayIcon';
-import PreviousWhite from '../Image/PreviousWhite';
-import FullScreen from '../Image/FullScreen';
+
 import OutputDurationTimeline from './OutputDurationTimeline';
 import VideoDurationTimeline from './VideoDurationTimeline';
-import Triangle from '../Image/Triangle';
-
-const windowWidth = Dimensions.get('window').width - 40;
-const THUMB_WIDTH = 15;
-const THUMB_HEIGHT = 51;
-const PLAYBACK_WIDTH = 5;
-const availableSpace = windowWidth - THUMB_WIDTH * 2;
+import {
+  PLAYBACK_WIDTH,
+  THUMB_WIDTH,
+  availableSpace,
+  windowWidth,
+} from './helper/const';
+import {styles} from './VideoTrimmer.style';
+import VideoSlider from './VideoSlider';
+import {formatDuration} from './helper/convertTimeString';
+import {
+  leftThumbAnimatedStyle,
+  playBackAnimatedStyle,
+  rightThumbAnimatedStyle,
+} from './helper/ThumbAnimatedStyle';
+import CustomPlayBackControls from './CustomPlayBackControls';
+import {Triangle} from '../Image';
+import Thumbnails from './Thumbnails';
 
 const CustomPlayback = () => {
-  const videoRef = useRef(null);
+  const videoRef = useRef<Video>(null);
   const [paused, setPaused] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [startTime, setStartTime] = useState(0);
@@ -66,14 +61,14 @@ const CustomPlayback = () => {
   const lastRightThumb = useSharedValue(0);
   const lastProgressPoint = useSharedValue(0);
 
-  const handleLoad = meta => {
+  const handleLoad = (meta: OnLoadData) => {
     setDuration(meta.duration);
     setEndTime(meta.duration);
     setCurrentTime(0);
     currentRef.current = meta.duration;
   };
 
-  const handleProgress = progress => {
+  const handleProgress = (progress: OnProgressData) => {
     setCurrentTime(progress.currentTime);
     lastProgressPoint.value = progress.currentTime;
     const x =
@@ -81,81 +76,58 @@ const CustomPlayback = () => {
         (windowWidth - PLAYBACK_WIDTH - THUMB_WIDTH * 2)) /
       duration;
     playBackX.value = x;
-    if (progress.currentTime >= duration) {
+    if (progress.currentTime >= endTime) {
       setPaused(true);
       setCurrentTime(startTime);
-      videoRef.current.seek(startTime);
-      playBackX.value = startTime;
+      videoRef?.current?.seek(startTime);
+      playBackX.value = (startTime * availableSpace) / currentRef.current;
     }
   };
 
   const handleEnd = () => {
     setPaused(true);
-    setCurrentTime(0);
-    videoRef.current.seek(0);
-    playBackX.value = 0;
+    setCurrentTime(startTime);
+    videoRef?.current?.seek(startTime);
+    playBackX.value = (startTime * availableSpace) / currentRef.current;
   };
 
   const handlePlayPause = () => {
     setPaused(!paused);
   };
 
-  const handleSlideComplete = time => {
-    videoRef.current.seek(time);
+  const handleSlideComplete = (time: number) => {
+    videoRef?.current?.seek(time);
     const x =
       (time * (windowWidth - PLAYBACK_WIDTH - THUMB_WIDTH * 2)) / duration;
     playBackX.value = x;
   };
 
-  const leftThumbAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{translateX: 0}],
-      width: leftThumbX.value + THUMB_WIDTH,
-    };
-  });
-
-  const rightThumbAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{translateX: rightThumbX.value}],
-      width: windowWidth - rightThumbX.value,
-    };
-  });
-
-  const playBackAnimatedStyle = useAnimatedStyle(() => {
-    const spaceBetweenThumbs =
-      rightThumbX.value - leftThumbX.value - THUMB_WIDTH;
-    return {
-      transform: [
-        {
-          translateX:
-            (playBackX.value * spaceBetweenThumbs) / availableSpace +
-            THUMB_WIDTH,
-        },
-      ],
-    };
-  });
-
-  const seekVideo = time => {
+  const seekVideo = (time: number) => {
     videoRef.current?.seek(time);
-
     setCurrentTime(time);
   };
 
-  const thumbRightUpdate = rightThumbX => {
+  const thumbRightUpdate = (rightThumbX: number) => {
     const endTime =
       ((rightThumbX - THUMB_WIDTH) / availableSpace) * currentRef.current;
+    // setEndTime(endTime);
+    // setDuration(endTime - startTime);
     setEndTime(endTime);
-    setDuration(endTime - startTime);
-    videoRef.current.seek(startTime);
+    if (playBackX.value > rightThumbX) {
+      playBackX.value = leftThumbX.value;
+    }
   };
 
-  const thumbLeftUpdate = leftThumbX => {
+  const thumbLeftUpdate = (leftThumbX: number) => {
     const startTime = (leftThumbX / availableSpace) * currentRef.current;
     setStartTime(startTime);
-    const endTime =
-      ((rightThumbX.value - THUMB_WIDTH) / availableSpace) * currentRef.current;
-    setDuration(endTime - startTime);
-    videoRef.current.seek(startTime);
+    if (playBackX.value < leftThumbX) {
+      playBackX.value = leftThumbX;
+      seekVideo(startTime);
+    }
+    // const endTime =
+    //   ((rightThumbX.value - THUMB_WIDTH) / availableSpace) * currentRef.current;
+    // setDuration(endTime - startTime);
   };
 
   const progressPlaybackGesture = Gesture.Pan()
@@ -235,6 +207,10 @@ const CustomPlayback = () => {
         Cut the sample video
       </Text>
 
+      {/* <TouchableOpacity onPress={onPickVideo}>
+        <Text style={{color: 'white'}}>Pick video</Text>
+      </TouchableOpacity> */}
+
       <View>
         <Video
           ref={videoRef}
@@ -247,37 +223,16 @@ const CustomPlayback = () => {
           onEnd={handleEnd}
           rate={4}
         />
-        <VideoDurationTimeline />
+        <VideoDurationTimeline currentTime={currentTime} duration={duration} />
       </View>
 
-      <Slider
-        style={styles.slider}
-        value={currentTime}
-        minimumValue={0}
-        maximumValue={duration}
-        onSlidingComplete={handleSlideComplete}
-        thumbTintColor="white"
-        minimumTrackTintColor="white"
-        maximumTrackTintColor="white"
+      <VideoSlider
+        currentTime={currentTime}
+        duration={duration}
+        handleSlideComplete={handleSlideComplete}
       />
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.buttonPlay} onPress={handlePlayPause}>
-          <PlayIcon />
-        </TouchableOpacity>
-        <View />
 
-        <View style={styles.timelineBtn}>
-          <TouchableOpacity style={styles.button}>
-            <PreviousWhite />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.nextTimeline}>
-            <PreviousWhite />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button}>
-            <FullScreen />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <CustomPlayBackControls handlePlayPause={handlePlayPause} />
 
       <OutputDurationTimeline
         startTime={formatDuration(startTime)}
@@ -286,30 +241,26 @@ const CustomPlayback = () => {
 
       <View style={styles.containerPlayback}>
         {/* Thumbnails */}
-        <View style={styles.thumbnailsContainer}>
-          {thumbnails.map((thumbnail, index) => (
-            <Image
-              key={index}
-              source={{uri: thumbnail}}
-              style={styles.thumbnail}
-            />
-          ))}
-        </View>
+        <Thumbnails thumbnails={thumbnails} />
 
         {/* Left thumb */}
         <GestureDetector gesture={onLeftThumbGesture}>
-          <Animated.View style={[styles.thumbLeft, leftThumbAnimatedStyle]}>
+          <Animated.View
+            style={[styles.thumbLeft, leftThumbAnimatedStyle(leftThumbX)]}>
             <Triangle />
           </Animated.View>
         </GestureDetector>
 
         <GestureDetector gesture={progressPlaybackGesture}>
-          <Animated.View style={[styles.currentTime, playBackAnimatedStyle]} />
+          <Animated.View
+            style={[styles.currentTime, playBackAnimatedStyle(playBackX)]}
+          />
         </GestureDetector>
 
         {/* Right thumb */}
         <GestureDetector gesture={onRightThumbGesture}>
-          <Animated.View style={[styles.thumbRight, rightThumbAnimatedStyle]}>
+          <Animated.View
+            style={[styles.thumbRight, rightThumbAnimatedStyle(rightThumbX)]}>
             <View style={{transform: [{rotate: '180deg'}]}}>
               <Triangle />
             </View>
@@ -319,99 +270,18 @@ const CustomPlayback = () => {
 
       <TouchableOpacity
         onPress={onEnCodingVideo}
-        style={{backgroundColor: 'blue'}}>
-        <Text style={{marginTop: 30}}>Trim</Text>
+        style={{
+          backgroundColor: 'white',
+          borderRadius: 10,
+          width: '50%',
+          alignSelf: 'center',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+        <Text style={{paddingVertical: 15, color: 'black'}}>Trim</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: windowWidth,
-    paddingVertical: 10,
-  },
-  timePerTime: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-  },
-  timelineBtn: {
-    flexDirection: 'row',
-  },
-
-  durationTimeline: {
-    width: windowWidth,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    position: 'absolute',
-    bottom: 0,
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  video: {
-    alignSelf: 'stretch',
-    height: 300,
-    marginTop: 20,
-  },
-  slider: {},
-  button: {
-    paddingHorizontal: 10,
-  },
-  buttonPlay: {
-    position: 'absolute',
-    left: '50%',
-  },
-  nextTimeline: {
-    paddingHorizontal: 10,
-  },
-
-  containerPlayback: {
-    width: windowWidth,
-    height: 100,
-  },
-  thumbnailsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    height: 50,
-    paddingHorizontal: THUMB_WIDTH,
-  },
-  thumbnail: {
-    width: THUMB_WIDTH, // Thumbnail width
-    height: 40, // Thumbnail height
-  },
-  thumbLeft: {
-    width: THUMB_WIDTH,
-    height: THUMB_HEIGHT,
-    borderRadius: 20,
-    position: 'absolute',
-    backgroundColor: 'rgba(3, 177, 239, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 3,
-  },
-  thumbRight: {
-    width: THUMB_WIDTH,
-    height: THUMB_HEIGHT,
-    borderRadius: 20,
-    position: 'absolute',
-    backgroundColor: 'rgba(3, 177, 239, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 3,
-  },
-  currentTime: {
-    width: PLAYBACK_WIDTH,
-    height: THUMB_HEIGHT,
-    position: 'absolute',
-    backgroundColor: '#C99839',
-    borderRadius: 10,
-  },
-});
 
 export default CustomPlayback;
